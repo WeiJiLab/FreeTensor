@@ -30,6 +30,8 @@
 #include <pass/use_builtin_div.h>
 #include <pass/z3_simplify.h>
 
+#include <pass/plugin/state_machine_simplify.h>
+
 namespace ir {
 
 using namespace pybind11::literals;
@@ -246,6 +248,11 @@ void init_ffi_pass(py::module_ &m) {
     m.def("lower",
           static_cast<Stmt (*)(const Stmt &, const Ref<Target> &)>(&lower),
           "stmt"_a, "target"_a = nullptr);
+
+    m.def("state_machine_simplify",
+          static_cast<Func (*)(const Func &)>(&stateMachineSimplify), "func"_a);
+    m.def("state_machine_simplify",
+          static_cast<Stmt (*)(const Stmt &)>(&stateMachineSimplify), "stmt"_a);
 }
 
 } // namespace ir

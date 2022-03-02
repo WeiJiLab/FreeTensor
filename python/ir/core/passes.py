@@ -28,6 +28,8 @@ from ffi import gpu_simplex_buffers
 from ffi import gpu_normalize_threads
 from ffi import gpu_lower_vector
 
+from ffi import state_machine_simplify
+
 
 def lower(ast, target: Optional[ffi.Target] = None):
     return ffi.lower(ast, target)
