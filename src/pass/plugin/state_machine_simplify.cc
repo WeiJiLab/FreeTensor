@@ -4,14 +4,18 @@
 
 #include <analyze/all_iters.h>
 #include <analyze/all_reads.h>
+#include <analyze/all_writes.h>
 
 namespace ir {
 
 namespace {
 class Z3Condition : public Z3Simplify {
+    const ASTHashMap<Expr, bool> &assumptions_;
+
   public:
-    Z3Condition(const SymbolTableInterface &symbolTable)
-        : Z3Simplify(symbolTable) {}
+    Z3Condition(const SymbolTableInterface &symbolTable,
+                const ASTHashMap<Expr, bool> &assumptions)
+        : Z3Simplify(symbolTable), assumptions_(assumptions) {}
     Expr solve(const Expr &expr) {
         auto all_iters = allIters(expr);
         int cond_cnt = 0;
@@ -24,6 +28,13 @@ class Z3Condition : public Z3Simplify {
                 push((*this)(makeLT(iter_var, loop->end_)));
                 cond_cnt += 2;
             }
+        }
+        for (const auto &[expr, val] : assumptions_) {
+            if (val)
+                push((*this)(expr));
+            else
+                push((*this)(makeLNot(expr)));
+            cond_cnt++;
         }
 
         auto cond = (*this)(expr);
@@ -44,24 +55,44 @@ class Z3Condition : public Z3Simplify {
     }
 };
 
-class Simplify : public ScalarPropConst {
-    std::optional<Expr> obstacle_;
-    ASTHashMap<Expr, bool> assumptions_;
-    std::string postfix_;
+class AddIdPostFix : public Mutator {
+    const std::string &postfix_;
+
+  public:
+    AddIdPostFix(const std::string &postfix) : postfix_(postfix) {}
 
   protected:
     Stmt visitStmt(const Stmt &stmt) override {
-        auto ret = ScalarPropConst::visitStmt(stmt);
+        auto ret = Mutator::visitStmt(stmt);
         ret->setId(ret->id().strId() + postfix_);
+        return ret;
+    }
+};
+
+class Simplify : public ScalarPropConst {
+    std::optional<Expr> obstacle_;
+    ASTHashMap<Expr, bool> assumptions_;
+
+    Expr simplifyPredicate(const Expr &pred) {
+        auto cond = visitExpr(pred);
+        if (cond->isConst())
+            return cond;
+
+        auto z3_cond =
+            Z3Condition(this->symbolTableSnapshot(), assumptions_).solve(cond);
+        return z3_cond;
+    }
+
+  protected:
+    Stmt visitStmt(const Stmt &stmt) override {
+        auto ret =
+            !obstacle_ ? ScalarPropConst::visitStmt(stmt) : deepCopy(stmt);
         return ret;
     }
 
     Stmt visit(const If &op) override {
-        if (obstacle_)
-            return ScalarPropConst::visit(op);
-
-        auto cond = visitExpr(op->cond_);
-        if (cond->nodeType() == ASTNodeType::BoolConst) {
+        auto cond = simplifyPredicate(op->cond_);
+        if (cond->isConst()) {
             // constant branch, eliminate one
             if (cond.as<BoolConstNode>()->val_)
                 return visitStmt(op->thenCase_);
@@ -69,26 +100,48 @@ class Simplify : public ScalarPropConst {
                 return op->elseCase_.isValid() ? visitStmt(op->elseCase_)
                                                : makeStmtSeq("", {});
         }
+        
+        if (!allReads(cond).empty())
+            std::cerr << op << std::endl;
 
-        if (assumptions_.count(cond)) {
-            if (assumptions_[cond])
-                return visitStmt(op->thenCase_);
-            else
-                return op->elseCase_.isValid() ? visitStmt(op->elseCase_)
-                                               : makeStmtSeq("", {});
-        }
-
-        auto z3_cond = Z3Condition(this->symbolTableSnapshot()).solve(cond);
-        if (!z3_cond->isConst() && allReads(z3_cond).empty())
-            obstacle_ = z3_cond;
-
-        return ScalarPropConst::visit(
-            COPY_DEBUG_INFO(
-                makeIf(op->id(), z3_cond, op->thenCase_, op->elseCase_), op)
-                .as<IfNode>());
+        ASSERT(allReads(cond).empty());
+        obstacle_ = cond;
+        return visitStmt(op);
     }
 
     Stmt visit(const For &op) override {
+        // special case: unrolled while loop
+        if (op->id().strId().find("unrolled-while") != std::string::npos) {
+            ASSERT(op->len_->isConst() &&
+                   op->len_.as<IntConstNode>()->val_ ==
+                       std::numeric_limits<int32_t>::max());
+            ASSERT(op->body_->nodeType() == ASTNodeType::If &&
+                   !op->body_.as<IfNode>()->elseCase_.isValid());
+
+            auto output = makeStmtSeq(op->id(), {}).as<StmtSeqNode>();
+            auto cond = op->body_.as<IfNode>()->cond_;
+            auto body = op->body_.as<IfNode>()->thenCase_;
+            auto step_cnt = 1;
+            while (true) {
+                auto _stepping = simplifyPredicate(cond);
+                ASSERT(_stepping->isConst());
+                auto stepping = _stepping.as<BoolConstNode>()->val_;
+
+                if (!stepping)
+                    break;
+
+                if (obstacle_) {
+                    output->stmts_.push_back(deepCopy(op));
+                    break;
+                }
+
+                output->stmts_.push_back(AddIdPostFix(
+                    ".while-" + std::to_string(step_cnt++))((*this)(body)));
+            }
+
+            return output;
+        }
+
         std::function<Stmt(Stmt)> dfs = [&](Stmt body) {
             auto backup_state_begin = backup_state();
             body = (*this)(body);
@@ -105,21 +158,24 @@ class Simplify : public ScalarPropConst {
             obstacle_ = std::nullopt;
             auto backup_state_end = backup_state();
 
-            postfix_ = ".assume_true";
             restore_state(backup_state_begin);
             assumptions_[obstacle] = true;
-            auto thenCase = dfs(body);
+            auto thenCase = AddIdPostFix(".true")(dfs(body));
 
-            postfix_ = ".assume_false";
             restore_state(backup_state_begin);
             assumptions_[obstacle] = false;
-            auto elseCase = dfs(body);
+            auto elseCase = AddIdPostFix(".false")(dfs(body));
 
             assumptions_.erase(obstacle);
             restore_state(backup_state_end);
 
             return makeIf(ID(), obstacle, thenCase, elseCase);
         };
+
+        for (auto &wr : allWrites(op->body_))
+            if (has_constant(wr))
+                kill_constant(wr, std::nullopt);
+
         pushFor(op);
         auto body = dfs(op->body_);
         popFor(op);

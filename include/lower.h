@@ -27,25 +27,48 @@
 #include <pass/tensor_prop_const.h>
 #include <pass/use_builtin_div.h>
 
+#include <iomanip>
+
 namespace ir {
 
 template <class T> T lower(const T &t, const Ref<Target> &target) {
     T func = t;
+    auto log = [](int line) {
+        auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cerr << "lower: " << line << std::put_time(std::localtime(&t), " - %F %T") << std::endl;
+    };
+    #define LOG log(__LINE__);
+    LOG
     func = scalarPropConst(func);
+    LOG
     func = removeDeadVar(func);
+    LOG
     func = propOneTimeUse(func);
+    LOG
     func = floatSimplify(func); // After propOneTimeUse
+    LOG
     func = simplifyPass(func);
+    LOG
     func = moveOutFirstOrLastIter(func);
+    LOG
     func = sinkVar(func);
+    LOG
     func = shrinkVar(func);
+    LOG
     func = mergeAndHoistIf(func);
+    LOG
     func = tensorPropConst(func);
+    LOG
     func = removeWrites(func);
+    LOG
     func = removeCyclicAssign(func); // After remove_writes
+    LOG
     func = removeDeadVar(func);      // After remove_writes and prop_const
+    LOG
     func = makeParallelReduction(func);
+    LOG
     func = shrinkFor(func); // After remove_writes and make_parallel_reduction
+    LOG
 
     if (target.isValid()) {
         switch (target->type()) {
@@ -76,9 +99,11 @@ template <class T> T lower(const T &t, const Ref<Target> &target) {
             ASSERT(false);
         }
     }
+    LOG
 
     // After passes including architecture-specific ones
     func = useBuiltinDiv(func);
+    LOG
 
     return func;
 }

@@ -88,6 +88,7 @@ class ScalarPropConst : public SymbolTable<Mutator> {
         return COPY_DEBUG_INFO(result, val);
     }
 
+  protected:
     /**
      * @brief Indices to a scalar, includes a sequence of constant offsets.
      */
@@ -135,7 +136,9 @@ class ScalarPropConst : public SymbolTable<Mutator> {
     std::unordered_multimap<std::string, std::pair<std::string, ScalarIndices>>
         iter_dep_constants_;
 
-  protected:
+    bool has_constant(const std::string &name) {
+        return constants_.count(name) && !constants_[name].empty();
+    }
     void gen_constant(const std::string &name,
                       const std::optional<ScalarIndices> &indices,
                       const Expr &value);
@@ -149,6 +152,11 @@ class ScalarPropConst : public SymbolTable<Mutator> {
     void restore_state(
         std::pair<decltype(constants_), decltype(iter_dep_constants_)> state) {
         std::tie(constants_, iter_dep_constants_) = state;
+    }
+    void clear_constants() {
+        for (auto &[k, v] : constants_)
+            v.clear();
+        iter_dep_constants_.clear();
     }
 
     /**
