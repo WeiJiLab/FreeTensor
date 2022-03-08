@@ -52,6 +52,8 @@ class ReplaceByTape : public Mutator {
         : symbolTable_(symbolTable), tapeMap_(tapeMap), versions_(versions),
           parent_(parent) {}
 
+    Expr replaceForwardValue(const Expr &equLoad);
+
   protected:
     Expr visit(const Load &op) override;
 };
@@ -81,8 +83,13 @@ class GradExpr : public Visitor {
         return HashComparator()(op, root_) ? equLoad_ : op;
     }
 
-    Expr useForwardVal(const Expr &op) {
-        return replaceByLoadY(replaceByTape_(op));
+    Expr useForwardVal(const Expr &_op) {
+        auto op = replaceByLoadY(_op);
+        if (op == _op) {
+            return replaceByTape_(op);
+        } else {
+            return replaceByTape_.replaceForwardValue(op);
+        }
     }
 
   protected:
@@ -147,6 +154,8 @@ class Grad : public SymbolTable<Mutator> {
   protected:
     Stmt visit(const StmtSeq &op) override;
     Stmt visit(const For &op) override;
+    Stmt visit(const If &op) override;
+    Stmt visit(const Assert &op) override;
     Stmt visit(const VarDef &op) override;
     Stmt visit(const Store &op) override;
     Stmt visit(const ReduceTo &op) override;

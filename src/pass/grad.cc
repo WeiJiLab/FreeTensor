@@ -1,10 +1,11 @@
 #include <analyze/all_defs.h>
 #include <analyze/all_no_reuse_defs.h>
-#include <analyze/all_reads.h>
+#include <analyze/all_uses.h>
 #include <analyze/deps.h>
 #include <cursor.h>
 #include <pass/float_simplify.h>
 #include <pass/grad.h>
+#include <pass/hoist_return_vars.h>
 #include <pass/hoist_var_over_stmt_seq.h>
 #include <pass/make_reduction.h>
 #include <pass/output_intermediates.h>
@@ -49,6 +50,21 @@ void PropagateRequire::visit(const VarDef &op) {
         affectedDefs_.insert(op->id());
     }
     BaseClass::visit(op);
+}
+
+Expr ReplaceByTape::replaceForwardValue(const Expr &_equLoad) {
+    auto __equLoad = deepCopy(_equLoad);
+    ASSERT(__equLoad->nodeType() == ASTNodeType::Load);
+    auto equLoad = __equLoad.as<LoadNode>();
+    if (tapeMap_.count(symbolTable_.def(equLoad->var_)->id())) {
+        auto tapeVar = tapeMap_.at(symbolTable_.def(equLoad->var_)->id());
+        if (tapeVar != equLoad->var_) {
+            equLoad->var_ = tapeVar;
+            equLoad->indices_.insert(equLoad->indices_.begin(),
+                                     versions_.at(parent_->id()));
+        }
+    }
+    return equLoad;
 }
 
 Expr ReplaceByTape::visit(const Load &_op) {
@@ -98,14 +114,42 @@ Stmt Grad::visit(const For &op) {
                 noDeps.emplace_back(fwdVar + ".grad");
             }
         }
-        auto rbegin = makeAdd(
-            op->begin_, makeMul(op->step_, makeSub(op->len_, makeIntConst(1))));
-        auto rend = makeSub(op->begin_, op->step_);
-        auto rstep = makeSub(makeIntConst(0), op->step_);
+        ReplaceByTape replaceByTape(*this, tapeMap_, versions_, op);
+        auto rbegin = replaceByTape(
+            makeAdd(op->begin_,
+                    makeMul(op->step_, makeSub(op->len_, makeIntConst(1)))));
+        auto rend = replaceByTape(makeSub(op->begin_, op->step_));
+        auto rstep = replaceByTape(makeSub(makeIntConst(0), op->step_));
         return makeFor(op->id(), op->iter_, std::move(rbegin), std::move(rend),
                        std::move(rstep), op->len_,
                        op->property_.withNoDeps(noDeps), (*this)(op->body_));
     }
+}
+
+Stmt Grad::visit(const If &_op) {
+    auto __op = BaseClass::visit(_op);
+    ASSERT(__op->nodeType() == ASTNodeType::If);
+    auto op = __op.as<IfNode>();
+    if (isRecompute_) {
+        op->setId("");
+    } else {
+        ReplaceByTape replaceByTape(*this, tapeMap_, versions_, op);
+        op->cond_ = replaceByTape(op->cond_);
+    }
+    return op;
+}
+
+Stmt Grad::visit(const Assert &_op) {
+    auto __op = BaseClass::visit(_op);
+    ASSERT(__op->nodeType() == ASTNodeType::Assert);
+    auto op = __op.as<AssertNode>();
+    if (isRecompute_) {
+        op->setId("");
+    } else {
+        ReplaceByTape replaceByTape(*this, tapeMap_, versions_, op);
+        op->cond_ = replaceByTape(op->cond_);
+    }
+    return op;
 }
 
 Stmt Grad::visit(const VarDef &_op) {
@@ -528,6 +572,8 @@ grad(const Func &func, const std::unordered_set<std::string> &_requires,
     }
     auto forwardFunc = makeFunc(func->name_, func->params_,
                                 std::move(forwardReturns), forward, closure);
+
+    forwardFunc = hoistReturnVars(forwardFunc);
 
     for (auto &&[x, dzdx] : requireGrads) {
         backwardParams.emplace_back(dzdx);
