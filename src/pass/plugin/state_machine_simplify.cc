@@ -19,11 +19,15 @@ class Z3Condition : public Z3Simplify {
         int cond_cnt = 0;
         for (const auto &iter : all_iters) {
             auto loop = symbolTable_.loop(iter);
-            if (loop->step_->nodeType() == ASTNodeType::IntConst &&
-                loop->step_.as<IntConstNode>()->val_ == 1) {
+            if (loop->step_->nodeType() == ASTNodeType::IntConst) {
                 auto iter_var = makeVar(iter);
-                push((*this)(makeGE(iter_var, loop->begin_)));
-                push((*this)(makeLT(iter_var, loop->end_)));
+                if (loop->step_.as<IntConstNode>()->val_ > 0) {
+                    push((*this)(makeGE(iter_var, loop->begin_)));
+                    push((*this)(makeLT(iter_var, loop->end_)));
+                } else {
+                    push((*this)(makeLE(iter_var, loop->begin_)));
+                    push((*this)(makeGT(iter_var, loop->end_)));
+                }
                 cond_cnt += 2;
             }
         }
@@ -98,7 +102,7 @@ class Simplify : public ScalarPropConst {
                 return op->elseCase_.isValid() ? visitStmt(op->elseCase_)
                                                : makeStmtSeq("", {});
         }
-        
+
         if (!allReads(cond).empty())
             std::cerr << op << std::endl;
 
