@@ -29,12 +29,6 @@ void ScalarPropConst::gen_constant(const std::string &name,
     if (!indices || !allReads(value).empty())
         return;
     constants_[name][*indices] = value;
-    if (name.find("lazyrow__") != std::string::npos) {
-        std::cerr << "generating " << name << "[";
-        for (auto o : indices->offset)
-            std::cerr << o << ", ";
-        std::cerr << "] = " << value << std::endl;
-    }
     for (auto &it_var : allIters(value)) {
         iter_dep_constants_.insert({it_var, {name, *indices}});
     }
@@ -60,20 +54,11 @@ void ScalarPropConst::kill_constant(
         if (constants_[name].count(*indices))
             kill_iter_dep_entry(name, *indices);
         constants_[name].erase(*indices);
-        if (name.find("lazyrow__") != std::string::npos) {
-            std::cerr << "killing " << name << "[";
-            for (auto o : indices->offset)
-                std::cerr << o << ", ";
-            std::cerr << "]" << std::endl;
-        }
     } else {
         for (const auto &[killing_indices, _] : constants_[name]) {
             kill_iter_dep_entry(name, killing_indices);
         }
         constants_[name].clear();
-        if (name.find("lazyrow__") != std::string::npos) {
-            std::cerr << "killing " << name << std::endl;
-        }
     }
 }
 
@@ -128,7 +113,7 @@ Stmt ScalarPropConst::visit(const Store &store_orig) {
     auto store_unchecked = BaseClass::visit(store_orig);
     ASSERT(store_unchecked->nodeType() == ASTNodeType::Store);
     auto store = store_unchecked.as<StoreNode>();
-    
+
     // const map is maintained according to VarDefs, should always find
     ASSERT(constants_.count(store->var_));
 
@@ -137,9 +122,6 @@ Stmt ScalarPropConst::visit(const Store &store_orig) {
     if (expr->isConst())
         expr = castType(this->def(store->var_)->buffer_->tensor().dtype(),
                         store->expr_.as<ConstNode>());
-        
-    if (store->var_.find("lazyrow__") != std::string::npos && !allReads(store).empty())
-        std::cerr << "??? " << store;
 
     // generate constant value
     gen_constant(store->var_, tryToScalar(store->indices_), expr);

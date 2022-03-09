@@ -2,9 +2,7 @@
 #include <pass/scalar_prop_const.h>
 #include <pass/z3_simplify.h>
 
-#include <analyze/all_iters.h>
-#include <analyze/all_reads.h>
-#include <analyze/all_writes.h>
+#include <analyze/all_uses.h>
 
 namespace ir {
 
