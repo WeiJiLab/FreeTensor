@@ -8,7 +8,7 @@ namespace ir {
 
 class CodeGenCPU : public CodeGenC<CodeGenStream> {
     bool inParallel_ = false;
-    int64_t stackTop_ = 8192 * 1024 * 4, stackSize_ = 0;
+    int64_t stackTop_ = 8192 * 1024 * 16, stackSize_ = 0;
 
   public:
     CodeGenCPU(const std::vector<std::string> &params,
