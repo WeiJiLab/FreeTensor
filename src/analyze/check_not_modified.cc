@@ -1,8 +1,9 @@
-#include <unordered_set>
+#include <unordered_map>
 
 #include <analyze/all_uses.h>
 #include <analyze/check_not_modified.h>
 #include <analyze/deps.h>
+#include <pass/flatten_stmt_seq.h>
 
 namespace ir {
 
@@ -58,7 +59,7 @@ bool checkNotModified(const Stmt &op, const Expr &expr,
 
     auto reads = allReads(expr);
     if (reads.empty()) {
-        return true; // early exit
+        return true; // early exit: impossible to be written
     }
 
     // First insert temporarily Eval node to the AST, then perform dependency
@@ -66,12 +67,21 @@ bool checkNotModified(const Stmt &op, const Expr &expr,
 
     InsertTmpEval inserter(expr, s0Side, s0, s1Side, s1);
     auto tmpOp = inserter(op);
+    tmpOp = flattenStmtSeq(tmpOp);
     ASSERT(inserter.s0Eval().isValid());
     ASSERT(inserter.s1Eval().isValid());
-    auto common = lca(getCursorById(tmpOp, inserter.s0Eval()),
-                      getCursorById(tmpOp, inserter.s1Eval()));
+    auto c0 = getCursorById(tmpOp, inserter.s0Eval());
+    auto c1 = getCursorById(tmpOp, inserter.s1Eval());
 
-    std::unordered_set<Stmt> writesWAR, writesRAW;
+    if (c0.hasNext() && c0.next().id() == c1.id()) {
+        return true; // early exit: the period to check is empty
+    }
+
+    auto common = lca(c0, c1); // FIXME: It seems checking `common` is wrong
+                               // because we may have multiple loops
+
+    // write -> serialized PBMap
+    std::unordered_map<Stmt, std::string> writesWAR, writesRAW;
     auto filterWAR = [&](const AccessPoint &later, const AccessPoint &earlier) {
         return earlier.cursor_.id() == inserter.s0Eval() &&
                lca(later.cursor_, common).id() == common.id();
@@ -81,22 +91,30 @@ bool checkNotModified(const Stmt &op, const Expr &expr,
                lca(earlier.cursor_, common).id() == common.id();
     };
     auto foundWAR = [&](const Dependency &dep) {
-        writesWAR.insert(dep.later_.cursor_.node());
+        // Serialize dep.dep_ because it is from a random PBCtx
+        writesWAR[dep.later_.cursor_.node()] = toString(dep.dep_);
     };
     auto foundRAW = [&](const Dependency &dep) {
-        writesRAW.insert(dep.earlier_.cursor_.node());
+        // Serialize dep.dep_ because it is from a random PBCtx
+        writesRAW[dep.earlier_.cursor_.node()] = toString(dep.dep_);
     };
     findDeps(tmpOp, {{}}, foundWAR, FindDepsMode::Dep, DEP_WAR, filterWAR);
     findDeps(tmpOp, {{}}, foundRAW, FindDepsMode::Dep, DEP_RAW, filterRAW);
 
-    for (auto &item : writesWAR) {
+    for (auto &[item, wr0] : writesWAR) {
         if (writesRAW.count(item)) {
-            return false;
+            PBCtx ctx;
+            auto r1w = writesRAW.at(item);
+            auto r1r0 = applyRange(PBMap(ctx, r1w), PBMap(ctx, wr0));
+            if (!r1r0.empty()) {
+                return false;
+            }
         }
     }
 
     // FIXME: What if the loop iterators are different between
-    // `earlier` and `later`?
+    // `earlier` and `later`? Currently we check it explicitly in
+    // schedule/inline and pass/tensor_prop_const
 
     return true;
 }

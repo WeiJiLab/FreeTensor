@@ -4,6 +4,7 @@ using IterTools
 using Flux, Zygote
 
 include("../../common/julia/io.jl")
+include("../../common/julia/gpu.jl")
 
 function dilated_attention(q, k, v, w, dilation)::CuArray{Float32}
     feat_len, seq_len, n_heads = size(q)
@@ -75,9 +76,6 @@ function main()
     v = CuArray(v)
     d_y = CuArray(d_y)
 
-    warmup_num = 5
-    test_num = 100
-
     if ARGS[2] == "Inf"
         for i = 1:warmup_num
             y = transformer(q, k, v, w, dilation, dilation_heads)
@@ -86,10 +84,16 @@ function main()
                 # writedlm("y.out", [@sprintf("%.10f", i) for i in reshape(Array(y), (1, :))], ' ')
             end
         end
+        if haskey(ENV, "PROFILE_GPU")
+            profile_start()
+        end
         time = @timed begin
             for i = 1:test_num
                 y = transformer(q, k, v, w, dilation, dilation_heads)
             end
+        end
+        if haskey(ENV, "PROFILE_GPU")
+            profile_stop()
         end
         println("Inference Time = " * string(time.time / test_num * 1000) * " ms")
     elseif ARGS[2] == "For"
