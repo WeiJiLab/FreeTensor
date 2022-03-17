@@ -171,15 +171,20 @@ class ID {
 
     std::string stmtId_;
     Expr expr_; /// null for Stmt
+    size_t hash_;
+
+    static size_t computeHash(const char *stmtId, Expr expr = {});
 
   public:
     ID() {}
-    ID(const char *stmtId) : stmtId_(stmtId) {}
-    ID(const std::string &stmtId) : stmtId_(stmtId) {}
+    ID(const char *stmtId) : stmtId_(stmtId), hash_(computeHash(stmtId)) {}
+    ID(const std::string &stmtId)
+        : stmtId_(stmtId), hash_(computeHash(stmtId.c_str())) {}
     explicit ID(const Stmt &stmt);
 
     template <class T> ID(const Expr &expr, T &&parent) : ID(parent) {
         expr_ = expr;
+        hash_ = computeHash(stmtId_.c_str(), expr_);
     }
 
     bool isValid() const { return !stmtId_.empty(); }
@@ -189,6 +194,7 @@ class ID {
     friend std::string toString(const ID &id);
     friend bool operator==(const ID &lhs, const ID &rhs);
     friend bool operator!=(const ID &lhs, const ID &rhs);
+
     friend struct ::std::hash<ID>;
 };
 

@@ -70,7 +70,14 @@ size_t ASTNode::hash() {
     return hash_;
 }
 
-ID::ID(const Stmt &stmt) : ID(stmt->id_) {}
+size_t ID::computeHash(const char *stmtId, Expr expr) {
+    return ir::hashCombine(ir::Hasher()(expr),
+                           std::hash<std::string>()(stmtId));
+}
+
+ID::ID(const Stmt &stmt) : ID(stmt->id_) {
+    hash_ = computeHash(stmtId_.c_str(), expr_);
+}
 
 const std::string &ID::strId() const {
     if (expr_.isValid()) {
@@ -122,9 +129,6 @@ Stmt deepCopy(const Stmt &op) { return Mutator()(op); }
 
 namespace std {
 
-size_t hash<ir::ID>::operator()(const ir::ID &id) const {
-    return ir::hashCombine(ir::Hasher()(id.expr_),
-                           std::hash<std::string>()(id.stmtId_));
-}
+size_t hash<ir::ID>::operator()(const ir::ID &id) const { return id.hash_; }
 
 } // namespace std
