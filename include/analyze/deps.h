@@ -232,7 +232,13 @@ class AnalyzeDeps {
     const std::unordered_map<ID, std::vector<IterAxis>> &scope2coord_;
     const std::unordered_map<std::string, std::vector<ID>>
         &noDepsLists_; // Var name -> [loop ID]
-    const LoopVariExprMap &variantExpr_;
+    std::function<LoopVariExprMap()> variantExprGen_;
+    std::optional<LoopVariExprMap> variantExpr_;
+    const LoopVariExprMap &getVariantExpr() {
+        if (!variantExpr_)
+            variantExpr_ = variantExprGen_();
+        return *variantExpr_;
+    }
 
     const std::vector<FindDepsCond> &cond_;
     const FindDepsCallback &found_;
@@ -255,14 +261,14 @@ class AnalyzeDeps {
         const std::vector<VarDef> &allDefs,
         const std::unordered_map<ID, std::vector<IterAxis>> &scope2coord,
         const std::unordered_map<std::string, std::vector<ID>> &noDepsLists,
-        const LoopVariExprMap &variantExpr,
+        std::function<LoopVariExprMap()> variantExprGen,
         const std::vector<FindDepsCond> &cond, const FindDepsCallback &found,
         FindDepsMode mode, DepType depType, const FindDepsFilter &filter,
         bool ignoreReductionWAW, bool eraseOutsideVarDef,
         bool noProjectOutProvateAxis)
         : reads_(reads), writes_(writes), allDefs_(allDefs),
           scope2coord_(scope2coord), noDepsLists_(noDepsLists),
-          variantExpr_(variantExpr), cond_(cond), found_(found),
+          variantExprGen_(variantExprGen), cond_(cond), found_(found),
           filter_(filter), mode_(mode),
           earlierRelax_(mode_ == FindDepsMode::KillLater ||
                                 mode_ == FindDepsMode::KillBoth
