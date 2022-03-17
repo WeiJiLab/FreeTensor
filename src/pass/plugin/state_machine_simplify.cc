@@ -153,9 +153,9 @@ class Simplify : public ScalarPropConst {
 
             auto obstacle = *obstacle_;
 
-            auto itersInObstacle = allIters(obstacle);
-            if (!itersInObstacle.count(op->iter_))
-                return body;
+            // auto itersInObstacle = allIters(obstacle);
+            // if (!itersInObstacle.count(op->iter_))
+            //     return body;
 
             obstacle_ = std::nullopt;
             auto backup_state_end = backup_state();

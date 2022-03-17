@@ -136,8 +136,8 @@ Stmt inlining(const Stmt &_ast, const ID &def) {
     findDeps(ast, {{}}, found, FindDepsMode::KillLater, DEP_RAW, filter);
     ast = MakeInline(def, replace)(ast);
 
-    ast = sinkVar(ast);
-    ast = simplifyPass(ast);
+    // ast = sinkVar(ast);
+    // ast = simplifyPass(ast);
 
     return ast;
 }

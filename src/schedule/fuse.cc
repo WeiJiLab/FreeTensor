@@ -1,6 +1,7 @@
 #include <analyze/check_not_modified.h>
 #include <analyze/deps.h>
 #include <hash.h>
+#include <pass/flatten_stmt_seq.h>
 #include <pass/prop_one_time_use.h>
 #include <pass/remove_dead_var.h>
 #include <pass/shrink_var.h>
@@ -200,8 +201,9 @@ void CheckAccessible::visit(const StmtSeq &op) {
     }
 }
 
-std::pair<Stmt, ID> fuse(const Stmt &_ast, const ID &loop0, const ID &loop1,
+std::pair<Stmt, ID> fuse(const Stmt &__ast, const ID &loop0, const ID &loop1,
                          bool strict) {
+    auto _ast = flattenStmtSeq(__ast);
     FuseFor mutator(loop0, loop1, strict);
     CheckAccessible check(loop0, loop1);
     check(_ast);
@@ -236,19 +238,20 @@ std::pair<Stmt, ID> fuse(const Stmt &_ast, const ID &loop0, const ID &loop1,
     findDeps(ast, {{{mutator.fused(), DepDirection::Normal}}}, found,
              FindDepsMode::Dep, DEP_ALL, filter);
 
-    try {
-        ast = simplifyPass(ast);
-    } catch (const AssertAlwaysFalse &e) {
-        throw InvalidSchedule("Fusing " + toString(loop0) + " and " +
-                              toString(loop1) +
-                              " loop1 with different lengths? " + e.what());
-    }
+    if (!strict)
+        try {
+            ast = simplifyPass(ast);
+        } catch (const AssertAlwaysFalse &e) {
+            throw InvalidSchedule("Fusing " + toString(loop0) + " and " +
+                                toString(loop1) +
+                                " loop1 with different lengths? " + e.what());
+        }
 
-    ast = propOneTimeUse(ast);
-    ast = tensorPropConst(ast);
-    ast = sinkVar(ast);
-    ast = shrinkVar(ast);
-    ast = removeDeadVar(ast);
+    // ast = propOneTimeUse(ast);
+    // ast = tensorPropConst(ast);
+    // ast = sinkVar(ast);
+    // ast = shrinkVar(ast);
+    // ast = removeDeadVar(ast);
     return std::make_pair(ast, mutator.fused());
 }
 
