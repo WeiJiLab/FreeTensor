@@ -328,12 +328,9 @@ void init_ffi_ast(py::module_ &m) {
              [](const Stmt &op, const Stmt &other) { return match(op, other); })
         .def("type", [](const AST &op) { return toString(op->nodeType()); })
         .def("__str__", [](const AST &op) { return toString(op); })
-        .def("__repr__",
-             [](const AST &op) {
-                 return "<" + toString(op->nodeType()) + ": " + toString(op) +
-                        ">";
-             })
-        .def("pretty_print", [](const AST &op) { return toString(op, true); });
+        .def("__repr__", [](const AST &op) {
+            return "<" + toString(op->nodeType()) + ": " + toString(op) + ">";
+        });
 
     // NOTE: ORDER of the constructor matters!
     pyExpr.def(py::init([](bool val) { return makeBoolConst(val); }))
@@ -535,8 +532,9 @@ void init_ffi_ast(py::module_ &m) {
           "expr"_a, "expr"_a);
     m.def("makeIntrinsic",
           static_cast<Expr (*)(const std::string &, const std::vector<Expr> &,
-                               DataType)>(&_makeIntrinsic),
-          "fmt"_a, "params"_a, "retType"_a = DataType::Void);
+                               DataType, bool)>(&_makeIntrinsic),
+          "fmt"_a, "params"_a, "retType"_a = DataType::Void,
+          "hasSideEffect"_a = false);
 
     m.def("neutral_val", &neutralVal);
 }
