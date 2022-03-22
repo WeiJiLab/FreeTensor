@@ -31,6 +31,7 @@
 #include <pass/z3_simplify.h>
 
 #include <pass/plugin/state_machine_simplify.h>
+#include <pass/plugin/merge_consecutive_if.h>
 
 namespace ir {
 
@@ -253,6 +254,11 @@ void init_ffi_pass(py::module_ &m) {
           static_cast<Func (*)(const Func &)>(&stateMachineSimplify), "func"_a);
     m.def("state_machine_simplify",
           static_cast<Stmt (*)(const Stmt &)>(&stateMachineSimplify), "stmt"_a);
+
+    m.def("merge_consecutive_if",
+          static_cast<Func (*)(const Func &)>(&mergeConsecutiveIf), "func"_a);
+    m.def("merge_consecutive_if",
+          static_cast<Stmt (*)(const Stmt &)>(&mergeConsecutiveIf), "stmt"_a);
 }
 
 } // namespace ir

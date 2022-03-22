@@ -29,6 +29,7 @@ from ffi import gpu_normalize_threads
 from ffi import gpu_lower_vector
 
 from ffi import state_machine_simplify
+from ffi import merge_consecutive_if
 
 
 def lower(ast, target: Optional[ffi.Target] = None):
