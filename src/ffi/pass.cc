@@ -32,6 +32,7 @@
 
 #include <pass/plugin/state_machine_simplify.h>
 #include <pass/plugin/merge_consecutive_if.h>
+#include <pass/plugin/fold_if_stmt_to_expr.h>
 
 namespace ir {
 
@@ -257,6 +258,11 @@ void init_ffi_pass(py::module_ &m) {
           static_cast<Func (*)(const Func &)>(&mergeConsecutiveIf), "func"_a);
     m.def("merge_consecutive_if",
           static_cast<Stmt (*)(const Stmt &)>(&mergeConsecutiveIf), "stmt"_a);
+
+    m.def("fold_if_stmt_to_expr",
+          static_cast<Func (*)(const Func &)>(&foldIfStmtToExpr), "func"_a);
+    m.def("fold_if_stmt_to_expr",
+          static_cast<Stmt (*)(const Stmt &)>(&foldIfStmtToExpr), "stmt"_a);
 }
 
 } // namespace ir

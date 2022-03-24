@@ -27,9 +27,11 @@ from ffi import gpu_multiplex_buffers
 from ffi import gpu_simplex_buffers
 from ffi import gpu_normalize_threads
 from ffi import gpu_lower_vector
+from ffi import prop_one_time_use
 
 from ffi import state_machine_simplify
 from ffi import merge_consecutive_if
+from ffi import fold_if_stmt_to_expr
 
 
 def lower(ast, target: Optional[ffi.Target] = None):

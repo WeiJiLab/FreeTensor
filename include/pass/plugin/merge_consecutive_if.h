@@ -4,7 +4,8 @@
 namespace ir {
 
 class MergeConsecutiveIf : public Mutator {
-    Stmt visit(const If &orig_op) {
+  protected:
+    Stmt visit(const If &orig_op) override {
         auto unchecked_op = Mutator::visit(orig_op);
         ASSERT(unchecked_op->nodeType() == ASTNodeType::If);
         auto op = unchecked_op.as<IfNode>();
