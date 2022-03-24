@@ -4,28 +4,33 @@
 
 namespace ir {
 
-static bool isSharedAmong(MemType mtype, const std::string &parallel) {
-    if (parallel == "threadIdx.x" || parallel == "threadIdx.y" ||
-        parallel == "threadIdx.z") {
-        switch (mtype) {
-        case MemType::GPUGlobal:
-        case MemType::GPUShared:
-        case MemType::GPUWarp:
-            return true;
-        default:
-            return false;
+static bool isSharedAmong(MemType mtype, const ParallelScope &parallel) {
+    if (std::holds_alternative<CUDAScope>(parallel)) {
+        if (std::get<CUDAScope>(parallel).level_ == CUDAScope::Thread) {
+            switch (mtype) {
+            case MemType::GPUGlobal:
+            case MemType::GPUShared:
+            case MemType::GPUWarp:
+                return true;
+            default:
+                return false;
+            }
         }
-    }
-    if (parallel == "blockIdx.x" || parallel == "blockIdx.y" ||
-        parallel == "blockIdx.z") {
-        switch (mtype) {
-        case MemType::GPUGlobal:
-            return true;
-        default:
-            return false;
+        if (std::get<CUDAScope>(parallel).level_ == CUDAScope::Block) {
+            switch (mtype) {
+            case MemType::GPUGlobal:
+                return true;
+            default:
+                return false;
+            }
         }
     }
     return false;
+}
+
+static bool isConstTrue(const Expr &expr) {
+    return expr->nodeType() == ASTNodeType::BoolConst &&
+           expr.as<BoolConstNode>()->val_;
 }
 
 void FindMemType::visit(const VarDef &op) {
@@ -111,8 +116,13 @@ void CompAccessBound::visit(const VarDef &op) {
             }
         }
         if (part.isValid()) {
-            result_.cond_ =
-                result_.cond_.isValid() ? makeLOr(result_.cond_, part) : part;
+            if (!isConstTrue(part)) {
+                result_.cond_ = result_.cond_.isValid()
+                                    ? makeLOr(result_.cond_, part)
+                                    : part;
+            }
+        } else {
+            result_.cond_ = makeBoolConst(true);
         }
     }
 }
