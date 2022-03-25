@@ -176,7 +176,7 @@ class ID {
     static size_t computeHash(const char *stmtId, Expr expr = {});
 
   public:
-    ID() {}
+    ID() : hash_(0) {}
     ID(const char *stmtId) : stmtId_(stmtId), hash_(computeHash(stmtId)) {}
     ID(const std::string &stmtId)
         : stmtId_(stmtId), hash_(computeHash(stmtId.c_str())) {}

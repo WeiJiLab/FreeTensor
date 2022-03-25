@@ -57,8 +57,11 @@ class FoldIfStmtToExpr : public Mutator {
         auto unchecked_op = Mutator::visit(op_);
         ASSERT(unchecked_op->nodeType() == ASTNodeType::If);
         auto op = unchecked_op.as<IfNode>();
-        return checkAndCombine(op->cond_, op->thenCase_, op->elseCase_)
-            .value_or(op);
+        if (op->elseCase_.isValid())
+            if (auto result =
+                    checkAndCombine(op->cond_, op->thenCase_, op->elseCase_))
+                return *result;
+        return op;
     }
 };
 
