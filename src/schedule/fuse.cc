@@ -1,5 +1,6 @@
 #include <analyze/check_not_modified.h>
 #include <analyze/deps.h>
+#include <analyze/merge_no_deps_hint.h>
 #include <hash.h>
 #include <pass/flatten_stmt_seq.h>
 #include <pass/prop_one_time_use.h>
@@ -13,17 +14,6 @@
 namespace ir {
 
 namespace {
-
-std::vector<std::string> intersect(const std::vector<std::string> &lhs,
-                                   const std::vector<std::string> &rhs) {
-    std::vector<std::string> ret;
-    for (auto &&item : lhs) {
-        if (std::find(rhs.begin(), rhs.end(), item) != rhs.end()) {
-            ret.emplace_back(item);
-        }
-    }
-    return ret;
-}
 
 LoopInVarDefs findLoopInVarDefs(const Stmt &stmt, const ID &id,
                                 FindLoopInVarDefsDirection direction) {
@@ -120,12 +110,11 @@ Stmt FuseFor::visit(const StmtSeq &_op) {
             beforeId_ = loop0->body_->id();
             afterId_ = loop1->body_->id();
             auto seq = makeStmtSeq("", {loop0->body_, loop1->body_});
-            auto fused = makeFor(
-                fused_, iter0_, makeIntConst(0), loop0->end_, makeIntConst(1),
-                loop0->end_,
-                ForProperty().withNoDeps(intersect(loop0->property_.noDeps_,
-                                                   loop1->property_.noDeps_)),
-                std::move(seq));
+            auto fused = makeFor(fused_, iter0_, makeIntConst(0), loop0->end_,
+                                 makeIntConst(1), loop0->end_,
+                                 ForProperty().withNoDeps(mergeNoDepsHint(
+                                     root_, loop0->id(), loop1->id())),
+                                 std::move(seq));
 
             // From inner to outer
             for (auto &&stmt : loop1InVarDefs.surroundings_) {
@@ -204,7 +193,6 @@ void CheckAccessible::visit(const StmtSeq &op) {
 std::pair<Stmt, ID> fuse(const Stmt &__ast, const ID &loop0, const ID &loop1,
                          bool strict) {
     auto _ast = flattenStmtSeq(__ast);
-    FuseFor mutator(loop0, loop1, strict);
     CheckAccessible check(loop0, loop1);
     check(_ast);
     if (!check.loop0().loop_.isValid()) {
@@ -225,6 +213,7 @@ std::pair<Stmt, ID> fuse(const Stmt &__ast, const ID &loop0, const ID &loop1,
         }
     }
 
+    FuseFor mutator(_ast, loop0, loop1, strict);
     auto ast = mutator(_ast);
 
     auto filter = [&](const AccessPoint &later, const AccessPoint &earlier) {
