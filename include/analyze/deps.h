@@ -229,8 +229,13 @@ class AnalyzeDeps {
     std::function<LoopVariExprMap()> variantExprGen_;
     std::optional<LoopVariExprMap> variantExpr_;
     const LoopVariExprMap &getVariantExpr() {
-        if (!variantExpr_)
-            variantExpr_ = variantExprGen_();
+        if (!variantExpr_) {
+            #pragma omp critical
+            {
+                if (!variantExpr_)
+                    variantExpr_ = variantExprGen_();
+            }
+        }
         return *variantExpr_;
     }
 
