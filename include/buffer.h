@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include <sub_tree.h>
 #include <tensor.h>
 
 namespace ir {
@@ -50,19 +51,18 @@ inline std::string toString(MemType mtype) {
     return "[???]";
 }
 
-class Buffer {
-    Tensor tensor_;
+class Buffer : public ASTPart {
+    SubTree<Tensor> tensor_;
     AccessType atype_;
     MemType mtype_;
 
   public:
-    Buffer(Tensor &&tensor, AccessType atype, MemType mtype)
-        : tensor_(std::move(tensor)), atype_(atype), mtype_(mtype) {}
-    Buffer(const Tensor &tensor, AccessType atype, MemType mtype)
-        : tensor_(tensor), atype_(atype), mtype_(mtype) {}
+    template <class T>
+    Buffer(T &&tensor, AccessType atype, MemType mtype)
+        : tensor_(std::forward<T>(tensor)), atype_(atype), mtype_(mtype) {}
 
-    const Tensor &tensor() const { return tensor_; }
-    Tensor &tensor() { return tensor_; }
+    const auto &tensor() const { return tensor_; }
+    auto &tensor() { return tensor_; }
 
     void setAtype(AccessType atype) { atype_ = atype; }
     AccessType atype() const { return atype_; }
@@ -70,6 +70,10 @@ class Buffer {
     void setMtype(MemType mtype) { mtype_ = mtype; }
     MemType mtype() const { return mtype_; }
 };
+
+inline Ref<Buffer> deepCopy(const Ref<Buffer> &b) {
+    return Ref<Buffer>::make(*b);
+}
 
 } // namespace ir
 

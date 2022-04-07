@@ -49,12 +49,14 @@ class Mutator {
 
     virtual Stmt visit(const VarDef &op) {
         std::vector<Expr> shape;
-        shape.reserve(op->buffer_->tensor().shape().size());
-        for (auto &&dim : op->buffer_->tensor().shape()) {
+        shape.reserve(op->buffer_->tensor()->shape().size());
+        for (auto &&dim : op->buffer_->tensor()->shape()) {
             shape.emplace_back((*this)(dim));
         }
-        Tensor t(std::move(shape), op->buffer_->tensor().dtype());
-        Buffer b(std::move(t), op->buffer_->atype(), op->buffer_->mtype());
+        Ref<Tensor> t =
+            Ref<Tensor>::make(std::move(shape), op->buffer_->tensor()->dtype());
+        Ref<Buffer> b = Ref<Buffer>::make(std::move(t), op->buffer_->atype(),
+                                          op->buffer_->mtype());
         Expr sizeLim = op->sizeLim_.isValid() ? (*this)(op->sizeLim_) : nullptr;
         return COPY_DEBUG_INFO(makeVarDef(op->id(), op->name_, std::move(b),
                                           std::move(sizeLim),

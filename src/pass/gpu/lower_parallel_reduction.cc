@@ -61,7 +61,7 @@ Stmt LowerParallelReduction::visit(const For &_op) {
     std::vector<DataType> dtypes;
     for (size_t i = 0, n = op->property_.reductions_.size(); i < n; i++) {
         auto &[redOp, var, begins, ends] = op->property_.reductions_[i];
-        auto dtype = buffer(var)->tensor().dtype();
+        auto dtype = buffer(var)->tensor()->dtype();
         auto workspace =
             "__reduce_" + op->id().strId() + "_" + std::to_string(i);
         std::vector<Expr> shape;
@@ -126,10 +126,11 @@ Stmt LowerParallelReduction::visit(const For &_op) {
     Stmt ret = op;
     for (auto &&[workspace, wsShape, dtype] :
          iter::zip(workspaces, workspaceShapes, dtypes)) {
-        ret = makeVarDef("", workspace,
-                         Buffer(Tensor(wsShape, dtype), AccessType::Cache,
-                                MemType::GPUShared),
-                         nullptr, ret, false);
+        ret =
+            makeVarDef("", workspace,
+                       Ref<Buffer>::make(Ref<Tensor>::make(wsShape, dtype),
+                                         AccessType::Cache, MemType::GPUShared),
+                       nullptr, ret, false);
     }
 
     return ret;
