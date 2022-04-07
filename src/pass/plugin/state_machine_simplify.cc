@@ -121,8 +121,8 @@ class Simplify : public ScalarPropConst {
                    !op->body_.as<IfNode>()->elseCase_.isValid());
 
             auto output = makeStmtSeq(op->id(), {}).as<StmtSeqNode>();
-            auto cond = op->body_.as<IfNode>()->cond_;
-            auto body = op->body_.as<IfNode>()->thenCase_;
+            const Expr &cond = op->body_.as<IfNode>()->cond_;
+            const Stmt &body = op->body_.as<IfNode>()->thenCase_;
             auto step_cnt = 1;
             while (true) {
                 auto _stepping = simplifyPredicate(cond);
