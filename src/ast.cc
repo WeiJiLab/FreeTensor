@@ -63,11 +63,31 @@ std::string toString(ASTNodeType type) {
     }
 }
 
-size_t ASTNode::hash() {
-    if (hash_ == ~0ull) {
-        compHash();
+AST ASTNode::parentAST() const {
+    for (auto p = parent(); p.isValid(); p = p->parent()) {
+        if (p->isAST()) {
+            return p.as<ASTNode>();
+        }
     }
-    return hash_;
+    return nullptr;
+}
+
+Expr ExprNode::parentExpr() const {
+    for (auto p = parentAST(); p.isValid(); p = p->parentAST()) {
+        if (p->isExpr()) {
+            return p.as<ExprNode>();
+        }
+    }
+    return nullptr;
+}
+
+Stmt StmtNode::parentStmt() const {
+    for (auto p = parentAST(); p.isValid(); p = p->parentAST()) {
+        if (p->isStmt()) {
+            return p.as<StmtNode>();
+        }
+    }
+    return nullptr;
 }
 
 size_t ID::computeHash(const char *stmtId, Expr expr) {
