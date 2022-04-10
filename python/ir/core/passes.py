@@ -30,6 +30,7 @@ from ffi import gpu_simplex_buffers
 from ffi import gpu_normalize_threads
 from ffi import gpu_lower_vector
 from ffi import prop_one_time_use
+from ffi import flatten_stmt_seq
 
 from ffi import state_machine_simplify
 from ffi import merge_consecutive_if
