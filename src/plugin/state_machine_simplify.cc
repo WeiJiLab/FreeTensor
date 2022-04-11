@@ -1,4 +1,4 @@
-#include <pass/plugin/state_machine_simplify.h>
+#include <plugin/state_machine_simplify.h>
 #include <pass/scalar_prop_const.h>
 #include <pass/z3_simplify.h>
 

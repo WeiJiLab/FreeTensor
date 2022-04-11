@@ -66,7 +66,8 @@ void init_ffi_schedule(py::module_ &m) {
         .def("auto_fuse", &Schedule::autoFuse)
         .def("auto_parallelize", &Schedule::autoParallelize)
         .def("auto_set_mem_type", &Schedule::autoSetMemType)
-        .def("auto_unroll", &Schedule::autoUnroll);
+        .def("auto_unroll", &Schedule::autoUnroll)
+        .def("reverse_for_loop", &Schedule::reverseForLoop);
 }
 
 } // namespace ir

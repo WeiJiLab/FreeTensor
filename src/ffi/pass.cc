@@ -30,9 +30,9 @@
 #include <pass/use_builtin_div.h>
 #include <pass/z3_simplify.h>
 
-#include <pass/plugin/state_machine_simplify.h>
-#include <pass/plugin/merge_consecutive_if.h>
-#include <pass/plugin/fold_if_stmt_to_expr.h>
+#include <plugin/fold_if_stmt_to_expr.h>
+#include <plugin/merge_consecutive_if.h>
+#include <plugin/state_machine_simplify.h>
 
 namespace ir {
 

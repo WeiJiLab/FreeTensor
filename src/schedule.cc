@@ -33,6 +33,8 @@
 #include <schedule/var_reorder.h>
 #include <schedule/vectorize.h>
 
+#include <plugin/reverse_for_loop.h>
+
 namespace ir {
 
 Schedule::Schedule(const Stmt &ast) : ast_(ast) { ast_ = simplifyPass(ast_); }
@@ -750,4 +752,9 @@ void Schedule::multiLevelTilingWithFusion(
     ir::multiLevelTilingWithFusion(*this, target, annotation, pat, toFuse,
                                    level);
 }
+
+void Schedule::reverseForLoop(const ID &loop) {
+    ast_ = ir::reverseForLoop(ast_, loop);
+}
+
 } // namespace ir

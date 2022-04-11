@@ -497,6 +497,8 @@ class Schedule {
                                const MultiLevelTilingAnnotation &annotation,
                                const std::string &pat,
                                const ElementWiseInfo &toFuse, int level);
+
+    void reverseForLoop(const ID &loop);
 };
 
 } // namespace ir

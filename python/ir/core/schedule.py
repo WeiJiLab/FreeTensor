@@ -622,3 +622,6 @@ class Schedule(ffi.Schedule):
             Target architecture
         """
         super(Schedule, self).auto_unroll(target)
+
+    def reverse_for_loop(self, loop):
+        super(Schedule, self).reverse_for_loop(toId(loop))
