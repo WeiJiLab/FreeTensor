@@ -90,6 +90,25 @@ Stmt StmtNode::parentStmt() const {
     return nullptr;
 }
 
+Stmt StmtNode::parentCtrlFlow() const {
+    for (auto p = parentStmt(); p.isValid(); p = p->parentStmt()) {
+        if (p->nodeType() != ASTNodeType::StmtSeq &&
+            p->nodeType() != ASTNodeType::VarDef) {
+            return p;
+        }
+    }
+    return nullptr;
+}
+
+Stmt StmtNode::parentById(const ID &lookup) const {
+    for (auto p = self().as<StmtNode>(); p.isValid(); p = p->parentStmt()) {
+        if (p->id() == lookup) {
+            return p;
+        }
+    }
+    return nullptr;
+}
+
 size_t ID::computeHash(const char *stmtId, Expr expr) {
     return ir::hashCombine(ir::Hasher()(expr),
                            std::hash<std::string>()(stmtId));
@@ -144,6 +163,30 @@ bool StmtNode::hasNamedId() const { return id_.empty() || id_[0] != '#'; }
 
 Expr deepCopy(const Expr &op) { return Mutator()(op); }
 Stmt deepCopy(const Stmt &op) { return Mutator()(op); }
+
+AST lcaAST(const AST &lhs, const AST &rhs) {
+    auto ret = lca(lhs, rhs);
+    while (ret.isValid() && !ret->isAST()) {
+        ret = ret->parent();
+    }
+    return ret.as<ASTNode>();
+}
+
+Expr lcaExpr(const Expr &lhs, const Expr &rhs) {
+    auto ret = lcaAST(lhs, rhs);
+    while (ret.isValid() && !ret->isExpr()) {
+        ret = ret->parentAST();
+    }
+    return ret.as<ExprNode>();
+}
+
+Stmt lcaStmt(const Stmt &lhs, const Stmt &rhs) {
+    auto ret = lcaAST(lhs, rhs);
+    while (ret.isValid() && !ret->isStmt()) {
+        ret = ret->parentAST();
+    }
+    return ret.as<StmtNode>();
+}
 
 } // namespace ir
 

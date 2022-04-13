@@ -218,12 +218,22 @@ class StmtNode : public ASTNode {
     bool isStmt() const override { return true; }
 
     Ref<StmtNode> parentStmt() const;
+    Ref<StmtNode> parentCtrlFlow() const;
+
+    /**
+     * Find an ancestor by ID. `this` itself is also considered
+     */
+    Ref<StmtNode> parentById(const ID &lookup) const;
 
     DEFINE_NODE_ACCESS(Stmt);
 };
 
 Expr deepCopy(const Expr &op);
 Stmt deepCopy(const Stmt &op);
+
+AST lcaAST(const AST &lhs, const AST &rhs);
+Expr lcaExpr(const Expr &lhs, const Expr &rhs);
+Stmt lcaStmt(const Stmt &lhs, const Stmt &rhs);
 
 } // namespace ir
 
