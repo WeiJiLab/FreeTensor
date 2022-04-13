@@ -133,7 +133,8 @@ class Simplify : public ScalarPropConst {
                     break;
 
                 if (obstacle_) {
-                    output->stmts_.push_back(deepCopy(op));
+                    output->stmts_.push_back(AddIdPostFix(
+                    ".while-" + std::to_string(step_cnt++))(deepCopy(op)));
                     break;
                 }
 
