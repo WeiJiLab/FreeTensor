@@ -39,6 +39,31 @@ void CodeGenCUDA::genAlloc(const Ref<Tensor> &tensor, const std::string &rawPtr,
     os() << "sizeof(" << gen(tensor->dtype()) << ")));" << std::endl;
 }
 
+void CodeGenCUDA::genScalar(const std::string &var,
+                            const std::vector<Expr> &indices) {
+    auto mtype = buffer(var)->mtype();
+    if (indices.empty() &&
+        (mtype == MemType::GPUGlobal || mtype == MemType::GPUShared)) {
+        os() << "*" << mangle(var);
+    } else if (!inKernel() &&
+               (mtype == MemType::GPUGlobal || mtype == MemType::GPUShared ||
+                mtype == MemType::GPUWarp || mtype == MemType::GPULocal)) {
+        if (mtype == MemType::GPUGlobal) {
+            WARNING(
+                "You are accessing gpu/global memory from outside of a kernel. "
+                "This is only for debugging, and it has a low performance");
+            os() << "gpuScalar(";
+            CodeGenC::genScalar(var, indices);
+            os() << ")";
+        } else {
+            throw InvalidProgram("Unable to access " + ::ir::toString(mtype) +
+                                 " from outside of a kernel");
+        }
+    } else {
+        CodeGenC::genScalar(var, indices);
+    }
+}
+
 bool CodeGenCUDA::inKernel() const {
     return streamStack_.back().name_ != "default";
 }
@@ -292,6 +317,8 @@ void CodeGenCUDA::visit(const For &op) {
         if (!inKernel()) {
             std::string kernel = "kernel" + std::to_string(nKernel_++);
             pushStream(kernel);
+            sharedStackTop_ = 0;
+            globalStackTop_ = 0;
             beginBlock();
             (*this)(op->body_);
             streamStack_.back().threadDim_[op->property_->parallel_] =
