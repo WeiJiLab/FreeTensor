@@ -523,7 +523,7 @@ template <class Stream> void CodeGenC<Stream>::visit(const For &op) {
     if (op->step_->nodeType() == ASTNodeType::IntConst &&
         op->step_.as<IntConstNode>()->val_ == 1) {
         this->makeIndent();
-        this->os() << "for (int " << mangle(op->iter_) << " = ";
+        this->os() << "for (int64_t " << mangle(op->iter_) << " = ";
         (*this)(op->begin_);
         this->os() << "; " << mangle(op->iter_) << " < ";
         (*this)(op->end_);
@@ -534,12 +534,12 @@ template <class Stream> void CodeGenC<Stream>::visit(const For &op) {
     } else {
         auto iterCnt = mangle(op->iter_ + ".cnt");
         this->makeIndent();
-        this->os() << "for (int " << iterCnt << " = 0; " << iterCnt << " < ";
+        this->os() << "for (int64_t " << iterCnt << " = 0; " << iterCnt << " < ";
         (*this)(op->len_);
         this->os() << "; " << iterCnt << "++) ";
         this->beginBlock();
         this->makeIndent();
-        this->os() << "int " << mangle(op->iter_) << " = ";
+        this->os() << "int64_t " << mangle(op->iter_) << " = ";
         (*this)(op->begin_);
         this->os() << " + " << iterCnt << " * ";
         (*this)(op->step_);
