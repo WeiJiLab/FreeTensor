@@ -285,17 +285,17 @@ void CodeGenCUDA::visit(const ReduceTo &op) {
 
 void CodeGenCUDA::visit(const Var &op) {
     if (op->name_ == ".threadIdx.x") {
-        os() << "(int64_t)threadIdx.x";
+        os() << "(int)threadIdx.x";
     } else if (op->name_ == ".threadIdx.y") {
-        os() << "(int64_t)threadIdx.y";
+        os() << "(int)threadIdx.y";
     } else if (op->name_ == ".threadIdx.z") {
-        os() << "(int64_t)threadIdx.z";
+        os() << "(int)threadIdx.z";
     } else if (op->name_ == ".blockIdx.x") {
-        os() << "(int64_t)blockIdx.x";
+        os() << "(int)blockIdx.x";
     } else if (op->name_ == ".blockIdx.y") {
-        os() << "(int64_t)blockIdx.y";
+        os() << "(int)blockIdx.y";
     } else if (op->name_ == ".blockIdx.z") {
-        os() << "(int64_t)blockIdx.z";
+        os() << "(int)blockIdx.z";
     } else {
         CodeGenC::visit(op);
     }
@@ -706,7 +706,7 @@ extern "C" {
                 first = false;
             }
             for (auto &&name : stream.useIters_) {
-                os << (first ? "" : ", ") << "int64_t " << mangle(name);
+                os << (first ? "" : ", ") << "int " << mangle(name);
                 first = false;
             }
             os << ", __ByValArray<void *, " + std::to_string(nParams) +
