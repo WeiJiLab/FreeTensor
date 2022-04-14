@@ -34,8 +34,8 @@ namespace ir {
 template <class T> T lower(const T &t, const Ref<Target> &target) {
     T func = t;
     auto log = [](int line) {
-        auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        std::cerr << "lower: " << line << std::put_time(std::localtime(&t), " - %F %T") << std::endl;
+        // auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        // std::cerr << "lower: " << line << std::put_time(std::localtime(&t), " - %F %T") << std::endl;
     };
     #define LOG log(__LINE__);
     LOG
