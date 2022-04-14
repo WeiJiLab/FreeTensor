@@ -16,6 +16,8 @@ void DumpAsTest::printId(const Stmt &op) {
 
 std::string DumpAsTest::asTest(DataType dtype) const {
     switch (dtype) {
+    case DataType::Int64:
+        return "\"int64\"";
     case DataType::Int32:
         return "\"int32\"";
     case DataType::Float32:
