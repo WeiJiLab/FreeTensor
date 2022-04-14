@@ -31,6 +31,7 @@
 #include <pass/z3_simplify.h>
 
 #include <plugin/fold_if_stmt_to_expr.h>
+#include <plugin/fold_reduceto.h>
 #include <plugin/merge_consecutive_if.h>
 #include <plugin/state_machine_simplify.h>
 
@@ -263,6 +264,11 @@ void init_ffi_pass(py::module_ &m) {
           static_cast<Func (*)(const Func &)>(&foldIfStmtToExpr), "func"_a);
     m.def("fold_if_stmt_to_expr",
           static_cast<Stmt (*)(const Stmt &)>(&foldIfStmtToExpr), "stmt"_a);
+
+    m.def("fold_reduceto",
+          static_cast<Func (*)(const Func &)>(&foldReduceTo), "func"_a);
+    m.def("fold_reduceto",
+          static_cast<Stmt (*)(const Stmt &)>(&foldReduceTo), "stmt"_a);
 }
 
 } // namespace ir

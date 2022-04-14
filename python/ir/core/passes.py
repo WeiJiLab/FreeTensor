@@ -35,6 +35,7 @@ from ffi import flatten_stmt_seq
 from ffi import state_machine_simplify
 from ffi import merge_consecutive_if
 from ffi import fold_if_stmt_to_expr
+from ffi import fold_reduceto
 
 
 def lower(ast, target: Optional[ffi.Target] = None):
