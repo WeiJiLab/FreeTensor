@@ -8,42 +8,78 @@ namespace ir {
 class FoldReduceTo : public Mutator {
     std::optional<Stmt> checkAndCombine(const Stmt &op1, const Stmt &op2) {
         // not same type node, return nullopt
-        if (op1->nodeType() != ASTNodeType::ReduceTo ||
-            op2->nodeType() != ASTNodeType::ReduceTo)
+        if (!((op1->nodeType() == ASTNodeType::ReduceTo ||
+               op1->nodeType() == ASTNodeType::Store) &&
+              op2->nodeType() == ASTNodeType::ReduceTo))
             return std::nullopt;
 
-        auto red1 = op1.as<ReduceToNode>(), red2 = op2.as<ReduceToNode>();
+        if (op1->nodeType() == ASTNodeType::ReduceTo) {
+            auto red1 = op1.as<ReduceToNode>(), red2 = op2.as<ReduceToNode>();
 
-        auto red1_lhs = deepCopy(red1).as<ReduceToNode>(),
-             red2_lhs = deepCopy(red2).as<ReduceToNode>();
-        red1_lhs->expr_ = red2_lhs->expr_ = makeIntConst(0);
-        if (!HashComparator()(red1_lhs, red2_lhs))
-            return std::nullopt;
+            auto red1_lhs = deepCopy(red1).as<ReduceToNode>(),
+                 red2_lhs = deepCopy(red2).as<ReduceToNode>();
+            red1_lhs->expr_ = red2_lhs->expr_ = makeIntConst(0);
+            if (!HashComparator()(red1_lhs, red2_lhs))
+                return std::nullopt;
 
-        if (allReads(red2).count(red1->var_))
-            return std::nullopt;
+            if (allReads(red2).count(red1->var_))
+                return std::nullopt;
 
-        Expr rhs;
-        switch (red1->op_) {
-        case ReduceOp::Add:
-            rhs = makeAdd(red1->expr_, red2->expr_);
-            break;
-        case ReduceOp::Min:
-            rhs = makeMin(red1->expr_, red2->expr_);
-            break;
-        case ReduceOp::Max:
-            rhs = makeMax(red1->expr_, red2->expr_);
-            break;
-        case ReduceOp::Mul:
-            rhs = makeMul(red1->expr_, red2->expr_);
-            break;
-        default:
-            ASSERT(false);
-            break;
+            Expr rhs;
+            switch (red1->op_) {
+            case ReduceOp::Add:
+                rhs = makeAdd(red1->expr_, red2->expr_);
+                break;
+            case ReduceOp::Min:
+                rhs = makeMin(red1->expr_, red2->expr_);
+                break;
+            case ReduceOp::Max:
+                rhs = makeMax(red1->expr_, red2->expr_);
+                break;
+            case ReduceOp::Mul:
+                rhs = makeMul(red1->expr_, red2->expr_);
+                break;
+            default:
+                ASSERT(false);
+                break;
+            }
+
+            return makeReduceTo(red1->id().strId(), red1->var_, red1->indices_,
+                                red1->op_, rhs, red1->atomic_);
+        } else {
+            auto st1 = op1.as<StoreNode>();
+            auto red2 = op2.as<ReduceToNode>();
+            auto st1_lhs = deepCopy(st1).as<StoreNode>();
+            st1_lhs->expr_ = makeIntConst(0);
+            auto st2_lhs = makeStore(red2->id(), red2->var_, red2->indices_,
+                                     makeIntConst(0));
+            if (!HashComparator()(st1_lhs, st2_lhs))
+                return std::nullopt;
+
+            if (allReads(red2).count(st1->var_))
+                return std::nullopt;
+
+            Expr rhs;
+            switch (red2->op_) {
+            case ReduceOp::Add:
+                rhs = makeAdd(st1->expr_, red2->expr_);
+                break;
+            case ReduceOp::Min:
+                rhs = makeMin(st1->expr_, red2->expr_);
+                break;
+            case ReduceOp::Max:
+                rhs = makeMax(st1->expr_, red2->expr_);
+                break;
+            case ReduceOp::Mul:
+                rhs = makeMul(st1->expr_, red2->expr_);
+                break;
+            default:
+                ASSERT(false);
+                break;
+            }
+
+            return makeStore(st1->id(), st1->var_, st1->indices_, rhs);
         }
-
-        return makeReduceTo(red1->id().strId(), red1->var_, red1->indices_,
-                            red1->op_, rhs, red1->atomic_);
     }
 
   protected:

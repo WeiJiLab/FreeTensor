@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sys/stat.h> // mkdir
 #include <unistd.h>   // rmdir
+#include <fenv.h>
 
 #include <config.h>
 #include <debug.h>
@@ -65,7 +66,7 @@ void Driver::buildAndLoad() {
     switch (dev_.type()) {
     case TargetType::CPU:
         cmd = "c++ -I" NAME(
-            IR_RUNTIME_DIR) " -shared -O3 -fPIC -Wall -fopenmp -ffast-math";
+            IR_RUNTIME_DIR) " -shared -fPIC -Wall -fopenmp -ffast-math";
         cmd += " -o " + so + " " + cpp;
 #ifdef WITH_MKL
         cmd += " -I\"" NAME(WITH_MKL) "/include\"";
@@ -82,7 +83,9 @@ void Driver::buildAndLoad() {
             cmd += " -march=native";
         }
         if (Config::debugBinary()) {
-            cmd += " -g";
+            cmd += " -g -O0";
+        } else {
+            cmd += " -O3";
         }
         break;
     case TargetType::GPU:
@@ -183,8 +186,10 @@ void Driver::setParams(const std::vector<Ref<Array>> &args,
 }
 
 void Driver::run() {
+    feenableexcept(FE_ALL_EXCEPT ^ FE_INEXACT);
     func_(params_.data(), returns_.data(), retShapes_.data(), retDims_.data(),
           ctx_.get());
+    fedisableexcept(FE_ALL_EXCEPT ^ FE_INEXACT);
 }
 
 void Driver::sync() { dev_.sync(); }
