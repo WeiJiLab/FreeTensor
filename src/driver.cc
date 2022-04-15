@@ -3,10 +3,10 @@
 #include <cstdlib> // mkdtemp, system
 #include <cstring> // memset
 #include <dlfcn.h> // dlopen
+#include <fenv.h>
 #include <fstream>
 #include <sys/stat.h> // mkdir
 #include <unistd.h>   // rmdir
-#include <fenv.h>
 
 #include <config.h>
 #include <debug.h>
@@ -66,7 +66,8 @@ void Driver::buildAndLoad() {
     switch (dev_.type()) {
     case TargetType::CPU:
         cmd = "c++ -I" NAME(
-            IR_RUNTIME_DIR) " -shared -fPIC -Wall -fopenmp -ffast-math";
+            IR_RUNTIME_DIR) " -shared -fPIC -Wall -fopenmp -ffast-math "
+                            "-ftree-vectorize -ftree-vectorizer-verbose=0";
         cmd += " -o " + so + " " + cpp;
 #ifdef WITH_MKL
         cmd += " -I\"" NAME(WITH_MKL) "/include\"";
