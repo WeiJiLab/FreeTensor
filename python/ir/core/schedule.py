@@ -625,3 +625,8 @@ class Schedule(ffi.Schedule):
 
     def reverse_for_loop(self, loop):
         super(Schedule, self).reverse_for_loop(toId(loop))
+
+    def linear_transform_loops(self, loops, transform):
+        super(Schedule,
+              self).linear_transform_loops([toId(loop) for loop in loops],
+                                           transform)

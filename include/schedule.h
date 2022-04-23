@@ -502,6 +502,8 @@ class Schedule {
         const ElementWiseInfo &toFuse, int level, MemType memType);
 
     void reverseForLoop(const ID &loop);
+
+    void linearTransformLoops(const std::vector<ID> &loops, const std::function<std::vector<Expr>(std::vector<Var>)> &transform);
 };
 
 } // namespace ir

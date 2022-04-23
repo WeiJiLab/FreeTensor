@@ -34,6 +34,7 @@
 #include <schedule/vectorize.h>
 
 #include <plugin/reverse_for_loop.h>
+#include <plugin/linear_transform.h>
 
 namespace ir {
 
@@ -753,6 +754,10 @@ std::vector<std::pair<ID, int>> Schedule::multiLevelTilingWithFusion(
 
 void Schedule::reverseForLoop(const ID &loop) {
     ast_ = ir::reverseForLoop(ast_, loop);
+}
+
+void Schedule::linearTransformLoops(const std::vector<ID> &loops, const std::function<std::vector<Expr>(std::vector<Var>)> &transform) {
+    ast_ = ir::linearTransformLoops(ast_, loops, transform);
 }
 
 } // namespace ir

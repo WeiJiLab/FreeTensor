@@ -66,7 +66,12 @@ void init_ffi_schedule(py::module_ &m) {
         .def("auto_parallelize", &Schedule::autoParallelize)
         .def("auto_set_mem_type", &Schedule::autoSetMemType)
         .def("auto_unroll", &Schedule::autoUnroll)
-        .def("reverse_for_loop", &Schedule::reverseForLoop);
+        .def("reverse_for_loop", &Schedule::reverseForLoop)
+        .def("linear_transform_loops",
+             static_cast<void (Schedule::*)(
+                 const std::vector<ID> &,
+                 const std::function<std::vector<Expr>(std::vector<Var>)> &)>(
+                 &Schedule::linearTransformLoops));
 }
 
 } // namespace ir
