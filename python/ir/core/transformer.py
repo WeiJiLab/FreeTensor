@@ -818,7 +818,7 @@ def transform(func=None, verbose=False, caller_env=None):
                             'Illegal return at top level, need to be a `Var` or a tuple of `Var`s'
                         )
                     for ret in returns:
-                        if ret.vardef.atype != AccessType.InOut:
+                        if ret.vardef.atype != ffi.AccessType("inout"):
                             ret.vardef.set_atype('output')
                     returns = [
                         (ret.vardef.name, ret.vardef.dtype) for ret in returns
