@@ -26,6 +26,7 @@
 #include <pass/sink_var.h>
 #include <pass/tensor_prop_const.h>
 #include <pass/use_builtin_div.h>
+#include <pass/z3_simplify.h>
 
 #include <iomanip>
 
@@ -46,6 +47,8 @@ template <class T> T lower(const T &t, const Ref<Target> &target) {
     func = propOneTimeUse(func);
     LOG
     func = floatSimplify(func); // After propOneTimeUse
+    LOG
+    func = z3Simplify(func);
     LOG
     func = simplifyPass(func);
     LOG
