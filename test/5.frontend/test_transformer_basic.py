@@ -297,3 +297,17 @@ def test_inline_annotation():
     test(x_func)
     assert np.array_equal(x_np, x_std)
     assert np.array_equal(x_func, x_std)
+
+
+def test_brackets_free_assign():
+
+    @ft.optimize
+    def test(x, y):
+        x: ft.Var[(), "int32", "input"]
+        y: ft.Var[(), "int32", "output"]
+        y = x * 2 + 1
+
+    x_arr = ft.Array(np.array(5, dtype="int32"))
+    y_arr = ft.Array(np.array(0, dtype="int32"))
+    test(x=x_arr, y=y_arr)
+    assert y_arr.numpy() == 11

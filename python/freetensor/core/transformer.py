@@ -220,6 +220,22 @@ class StagedAssignable(abc.ABC):
         raise NotImplementedError()
 
 
+class StagedAssignTarget(abc.ABC):
+
+    @abc.abstractmethod
+    def assign(self, rhs) -> None:
+        raise NotImplementedError()
+
+
+def var_assign(self, value):
+    self[()] = value
+
+
+# Inject StagedAssignTarget into VarRef
+VarRef.assign = var_assign
+StagedAssignTarget.register(VarRef)
+
+
 def assign_stmt(name: str, value):
     '''Customized assign wrapper.
     If `value` is instance of `StagedAssignable`, it's regarded as a customized assign behavior and
@@ -622,7 +638,13 @@ class Transformer(ast.NodeTransformer):
 
     def visit_Assign(self, old_node: ast.Assign) -> ast.Assign:
         '''Rule:
-        `lhs = rhs` -> `lhs = assign('lhs', rhs)`
+        `lhs = rhs` ->
+            ```
+            if ('lhs' in locals() or 'lhs' in globals()) and isinstance(lhs, StagedAssignTarget):
+                lhs.assign(rhs)
+            else:
+                lhs = assign('lhs', rhs)
+            ```
         `x.lhs = rhs` -> `x.lhs = assign('lhs', rhs)`
         '''
         node: ast.Assign = self.generic_visit(old_node)
@@ -630,15 +652,38 @@ class Transformer(ast.NodeTransformer):
         if len(node.targets) == 1 and (isinstance(node.targets[0], ast.Name) or
                                        isinstance(node.targets[0],
                                                   ast.Attribute)):
-            name = None
             if isinstance(node.targets[0], ast.Name):
-                name = node.targets[0].id
+                lhs = node.targets[0].id
+                node = ast.If(
+                    ast.BoolOp(ast.And(), [
+                        ast.BoolOp(ast.Or(), [
+                            ast.Compare(ast.Constant(lhs), [ast.In()], [
+                                ast.Call(ast.Name('locals', ast.Load()), [], [])
+                            ]),
+                            ast.Compare(ast.Constant(lhs), [ast.In()], [
+                                ast.Call(ast.Name('globals', ast.Load()), [],
+                                         [])
+                            ])
+                        ]),
+                        ast.Call(ast.Name('isinstance', ast.Load()), [
+                            ast.Name(lhs, ast.Load()),
+                            module_helper(StagedAssignTarget)
+                        ], [])
+                    ]), [
+                        ast.Call(
+                            ast.Attribute(ast.Name(lhs, ast.Load()), 'assign',
+                                          ast.Load()), [node.value], [])
+                    ], [
+                        ast.Assign(
+                            node.targets,
+                            call_helper(assign_stmt, ast.Constant(lhs),
+                                        node.value))
+                    ])
             elif isinstance(node.targets[0], ast.Attribute):
-                name = node.targets[0].attr
-            if name is not None:
                 node = ast.Assign(
                     node.targets,
-                    call_helper(assign_stmt, ast.Constant(name), node.value))
+                    call_helper(assign_stmt, ast.Constant(node.targets[0].attr),
+                                node.value))
         return location_helper(node, old_node)
 
     def visit_AnnAssign(self, old_node: ast.AnnAssign) -> Any:
